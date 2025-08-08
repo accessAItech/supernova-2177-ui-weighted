@@ -1,0 +1,32 @@
+﻿# Python / Streamlit
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.streamlit/
+.streamlit-cache/
+.streamlit/**
+
+# OS/editor junk
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local artifacts / big scratch files
+*.db
+*.sqlite
+*.sqlite3
+*.parquet
+*.csv
+*.log
+combined_repo.md
+_bundle*.md
+gather_repo_to_md.py
+bundle_repo_10mb.py
+
+# Node or other
+node_modules/
+dist/
+build/
