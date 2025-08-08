@@ -1,66 +1,57 @@
 # pages/agents.py
 from __future__ import annotations
-import asyncio
+import os
 import streamlit as st
-from typing import Any, Dict
 
-# Your async bridge
-from frontend_bridge import dispatch_route
+PAGE = "agents"  # prefix so all widget keys on this page are unique
 
-st.header("🤖 Agents")
 
-def call(route: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    # Streamlit is sync; wrap the async bridge call
-    return asyncio.run(dispatch_route(route, payload))
+def _default_openai_key() -> str:
+    """Prefer session -> secrets -> env, but never crash if secrets.toml is absent."""
+    # 1) session
+    val = st.session_state.get("openai_api_key")
+    if isinstance(val, str) and val.strip():
+        return val.strip()
 
-# --- API key (session only; no persistence yet) -------------------------------
-st.subheader("API key")
-st.caption("Paste your OpenAI key once; we pass it to the launcher for this session.")
+    # 2) secrets (guarded so it doesn't raise when file doesn't exist)
+    try:
+        secret = st.secrets["openai_api_key"]  # type: ignore[index]
+        if isinstance(secret, str) and secret.strip():
+            return secret.strip()
+    except Exception:
+        pass
 
-openai_key = st.text_input(
-    "OPENAI_API_KEY",
-    type="password",
-    value=st.session_state.get("openai_key", ""),
-    key="agents_openai_key_input_v1_v2",       # <-- UNIQUE KEY
-)
+    # 3) environment
+    return os.environ.get("OPENAI_API_KEY", "").strip()
 
-if st.button("Save key (session)", key="agents_save_key_btn_v2"):
-    st.session_state["openai_key"] = openai_key
-    st.success("Saved to this session.")
 
-# --- discover agents ----------------------------------------------------------
-st.subheader("Available agents")
-resp = call("protocol_agents_list", {})  # or "list_agents"
-agents = resp.get("agents", []) if isinstance(resp, dict) else []
-chosen = st.multiselect(
-    "Pick agents to run",
-    options=agents,
-    default=agents[:1],
-    key="agents_pick_multiselect_v1_v2",       # <-- UNIQUE KEY
-)
+def render() -> None:
+    st.title("🤖 Agents")
 
-# --- pick backend -------------------------------------------------------------
-st.subheader("Backend (optional)")
-st.caption("Leave empty to use the agent default. Example: openai:gpt-4o-mini")
-llm_backend = st.text_input(
-    "LLM backend",
-    value="openai:gpt-4o-mini",
-    key="agents_backend_input_v1_v2",          # <-- UNIQUE KEY
-)
+    with st.form(f"{PAGE}_api_form"):
+        key_input = st.text_input(
+            "OpenAI API key",
+            value=_default_openai_key(),
+            type="password",
+            placeholder="sk-...",
+            key=f"{PAGE}_openai_api_key",  # ONE unique key only
+        )
+        saved = st.form_submit_button("Save")
 
-c1, c2 = st.columns(2)
-with c1:
-    if st.button("🚀 Launch", key="agents_launch_btn_v2"):
-        payload = {
-            "provider": "openai",
-            "api_key": st.session_state.get("openai_key", ""),
-            "agents": chosen,
-            "llm_backend": llm_backend.strip() or None,
-        }
-        out = call("protocol_agents_launch", payload)  # or "launch_agents"
-        st.success(f"Launched: {out.get('launched', [])}")
+    if saved:
+        st.session_state["openai_api_key"] = key_input.strip()
+        os.environ["OPENAI_API_KEY"] = st.session_state["openai_api_key"]
+        st.success("Saved. Agents will use this key.")
 
-with c2:
-    if st.button("⏭️ Step all", key="agents_step_btn_v2"):
-        out = call("protocol_agents_step", {})  # or "step_agents"
-        st.info(f"Stepped: {out.get('stepped', [])}")
+    st.caption(
+        "Tip: you can also set this in `.streamlit/secrets.toml` as "
+        '`openai_api_key = "sk-..."`'
+    )
+
+
+def main() -> None:
+    render()
+
+
+if __name__ == "__main__":
+    main()
