@@ -11,13 +11,14 @@ import streamlit as st
 
 with st.sidebar:
     # --- identity (species) ---
-    st.selectbox("I am a…", ["human","company","ai"], key="species")
-    st.selectbox(
-    "I am a…",
-    ["human", "company", "ai"],
-    index={"human":0, "company":1, "ai":2}[st.session_state.get("species","human")],
-    key="species",
-)
+    spec = st.selectbox(
+        "I am a…",
+        ("human", "company", "ai"),
+        index={"human": 0, "company": 1, "ai": 2}.get(st.session_state.get("species", "human"), 0),
+        key="species"  # <— single, canonical key
+    )
+    # (Optional) mirror to a simpler name if you read it elsewhere
+    st.session_state["user_species"] = spec
 
 
 # ──────────────────────────────────────────────────────────────────────────────
